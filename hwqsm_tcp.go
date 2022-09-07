@@ -26,6 +26,10 @@ const (
 	TbMGYP Channel = "HWQSMMGYP"
 	// TbJMDXHJ01 【神单】淘宝全网高佣定向选品群
 	TbJMDXHJ01 Channel = "HWQSMJMDXHJ01"
+	// Jd 【神单】京东肉单线报版
+	Jd Channel = "HWQSMJD"
+	// JdJJB 【神单】京东精简线报版
+	JdJJB Channel = "HWQSMJDJJB"
 	// ALL 所有订阅
 	ALL Channel = "HWQSMALL"
 )
@@ -67,7 +71,7 @@ func NewTcpClient(conf TcpClientConfig) *TcpClient {
 	return &TcpClient{Conf: conf}
 }
 
-func (tc *TcpClient) start(callback Callback) {
+func (tc *TcpClient) Start(callback Callback) {
 	tc.Conn = tc.connect()
 	for {
 		buf := make([]byte, 4096)
