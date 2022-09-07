@@ -8,6 +8,7 @@ import (
 	"log"
 	"net"
 	"strconv"
+	"sync"
 	"time"
 )
 
@@ -16,6 +17,9 @@ type Cmd string
 type Channel string
 
 const (
+	Test Channel = "HWQSMWRG"
+	// Tb 【神单】淘宝
+	Tb Channel = "HWQSMTB"
 	// TbJTWADS 【神单】淘宝社群精推版
 	TbJTWADS Channel = "HWQSMJTWADS"
 	// TbTMCS 【神单】猫超生活
@@ -58,6 +62,7 @@ type CmdData struct {
 type TcpClient struct {
 	Conf TcpClientConfig
 	Conn *net.TCPConn
+	Once sync.Once
 }
 
 type TcpClientConfig struct {
@@ -74,6 +79,11 @@ func NewTcpClient(conf TcpClientConfig) *TcpClient {
 // Start 启动方法
 func (tc *TcpClient) Start(callback Callback) {
 	tc.Conn = tc.connect()
+	if tc.Conn == nil {
+		log.Fatalln("connect failed!")
+		return
+	}
+	log.Println("connect success!")
 	for {
 		buf := make([]byte, 4096)
 		reqLen, err := tc.Conn.Read(buf)
@@ -86,6 +96,7 @@ func (tc *TcpClient) Start(callback Callback) {
 			continue
 		}
 		tcpContent := tc.convertToString(originContent, "gbk", "utf8")
+		log.Println(tcpContent)
 		var cmd CmdData
 		_ = json.Unmarshal([]byte(tcpContent), &cmd)
 		switch cmd.Cmd {
@@ -93,6 +104,8 @@ func (tc *TcpClient) Start(callback Callback) {
 			_, _ = tc.registerCode()
 			time.Sleep(1 * time.Second)
 			_, _ = tc.registerBroadcast()
+			time.Sleep(1 * time.Second)
+			go tc.heartbeat()
 		case CmdMessage:
 			decodeString, err := base64.StdEncoding.DecodeString(cmd.Content)
 			if err != nil {
@@ -129,20 +142,22 @@ func (tc *TcpClient) connect() *net.TCPConn {
 }
 
 func (tc *TcpClient) heartbeat() {
-	log.Println("connect success!")
-	for {
-		_, err := tc.Conn.Write([]byte("heartbeat"))
-		if err != nil {
-			log.Println(err.Error())
+	tc.Once.Do(func() {
+		log.Println("heartbeat start!")
+		for {
+			_, err := tc.Conn.Write([]byte("heartbeat"))
+			if err != nil {
+				log.Println(err.Error())
+			}
+			time.Sleep(20 * time.Second)
 		}
-		time.Sleep(20 * time.Second)
-	}
+	})
 }
 
 func (tc *TcpClient) registerCode() (int, error) {
 	cmdData := tc.newCmdData(CmdRegisterCode)
 	cmdData.Frame = "服务器"
-	cmdData.Version = tc.Conf.Code
+	cmdData.Version = tc.Conf.Version
 	registerBytes, _ := json.Marshal(cmdData)
 	return tc.Conn.Write(registerBytes)
 }
