@@ -71,6 +71,7 @@ func NewTcpClient(conf TcpClientConfig) *TcpClient {
 	return &TcpClient{Conf: conf}
 }
 
+// Start 启动方法
 func (tc *TcpClient) Start(callback Callback) {
 	tc.Conn = tc.connect()
 	for {
