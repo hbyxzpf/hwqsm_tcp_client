@@ -7,7 +7,9 @@ import (
 	"github.com/axgle/mahonia"
 	"log"
 	"net"
+	"regexp"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 )
@@ -65,6 +67,10 @@ type TcpClient struct {
 	Once sync.Once
 }
 
+type EmojiTrans struct {
+	Emoji string `json:"emoji"`
+}
+
 type TcpClientConfig struct {
 	Code       string
 	Url        string
@@ -112,11 +118,26 @@ func (tc *TcpClient) Start(callback Callback) {
 				log.Println(err.Error())
 				continue
 			}
-			cmd.Content = tc.convertToString(string(decodeString), "gbk", "utf8")
+			cmd.Content = tc.ConvertUnicodeEmoji(tc.convertToString(string(decodeString), "gbk", "utf8"))
 			callback(cmd)
 		}
 	}
 }
+
+func (tc *TcpClient) ConvertUnicodeEmoji(text string)string {
+	reg, err := regexp.Compile("(\\\\u[a-zA-z0-9]{4}){1,2}")
+	if err != nil {
+		return ""
+	}
+	for _, match := range reg.FindAllString(text, -1) {
+		sJsonBytes := []byte(fmt.Sprintf(`{"emoji":"%s"}`,match))
+		var emojiTrans EmojiTrans
+		_ = json.Unmarshal(sJsonBytes,&emojiTrans)
+		text = strings.Replace(text,match,emojiTrans.Emoji,1)
+	}
+	return text
+}
+
 
 func (tc *TcpClient) convertToString(src string, srcCode string, tagCode string) string {
 	srcCoder := mahonia.NewDecoder(srcCode)
