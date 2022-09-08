@@ -46,7 +46,7 @@ const (
 	CmdMessage           Cmd = "203"
 )
 
-type Callback func(cmd CmdData)
+type Callback func(cmd *CmdData)
 
 type CmdData struct {
 	Cmd         Cmd       `json:"cmd"`
@@ -59,6 +59,17 @@ type CmdData struct {
 	Broadcast   []Channel `json:"broadcast,omitempty"`
 	Channel     Channel   `json:"channel,omitempty"`
 	Recmd       string    `json:"recmd,omitempty"`
+	OriginJson string `json:"origin_json,omitempty"`
+	Images []Image `json:"images"`
+}
+
+type Image struct {
+	Hash string `json:"hash"`
+	Width   string `json:"width"`
+	Height  string `json:"height"`
+	Url     string `json:"url"`
+	Index int `json:"index"`
+	Origin string `json:"origin"`
 }
 
 type TcpClient struct {
@@ -113,15 +124,33 @@ func (tc *TcpClient) Start(callback Callback) {
 			time.Sleep(1 * time.Second)
 			go tc.heartbeat()
 		case CmdMessage:
-			decodeString, err := base64.StdEncoding.DecodeString(cmd.Content)
-			if err != nil {
-				log.Println(err.Error())
-				continue
-			}
-			cmd.Content = tc.ConvertUnicodeEmoji(tc.convertToString(string(decodeString), "gbk", "utf8"))
-			callback(cmd)
+			formateCmd := tc.formatReceiveData(cmd)
+			callback(formateCmd)
 		}
 	}
+}
+
+func (tc *TcpClient)formatReceiveData(cmd CmdData) *CmdData{
+	decodeString, err := base64.StdEncoding.DecodeString(cmd.Content)
+	if err != nil {
+		log.Println(err.Error())
+		return nil
+	}
+	cmd.Content = tc.ConvertUnicodeEmoji(tc.convertToString(string(decodeString), "gbk", "utf8"))
+	cmd = tc.parseImages(cmd)
+	return &cmd
+}
+
+func (tc *TcpClient) parseImages(cmd CmdData) CmdData {
+	var re = regexp.MustCompile(`(?m)\[pic,hash=([A-Z0-9]+),wide=(\d+),high=(\d+),cartoon=[a-z]+\]\[photo=(.*)\]`)
+	for i, match := range re.FindAllStringSubmatch(cmd.Content, -1) {
+		if len(match) != 5 {
+			continue
+		}
+		cmd.Images = append(cmd.Images,Image{Origin: match[0],Hash: match[1],Width: match[2],Height: match[3],Url: match[4],Index: i})
+		cmd.Content = strings.Replace(cmd.Content,match[0],"",1)
+	}
+	return cmd
 }
 
 func (tc *TcpClient) ConvertUnicodeEmoji(text string)string {
