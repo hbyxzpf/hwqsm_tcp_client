@@ -1,9 +1,10 @@
 package main
 
 import (
+	"encoding/json"
+	hwqsm "github.com/hbyxzpf/hwqsm_tcp_client"
 	"log"
 )
-import hwqsm "github.com/hbyxzpf/hwqsm_tcp_client"
 
 func main() {
 	client := hwqsm.NewTcpClient(hwqsm.TcpClientConfig{
@@ -13,6 +14,7 @@ func main() {
 		Broadcasts: []hwqsm.Channel{hwqsm.Tb, hwqsm.Jd, hwqsm.Test},
 	})
 	client.Start(func(cmd *hwqsm.CmdData) {
-		log.Println(cmd)
+		marshal, _ := json.Marshal(cmd)
+		log.Println(string(marshal))
 	})
 }

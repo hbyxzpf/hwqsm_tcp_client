@@ -59,16 +59,16 @@ type CmdData struct {
 	Broadcast   []Channel `json:"broadcast,omitempty"`
 	Channel     Channel   `json:"channel,omitempty"`
 	Recmd       string    `json:"recmd,omitempty"`
-	OriginJson string `json:"origin_json,omitempty"`
-	Images []Image `json:"images"`
+	OriginJson  string    `json:"origin_json,omitempty"`
+	Images      []Image   `json:"images"`
 }
 
 type Image struct {
-	Hash string `json:"hash"`
-	Width   string `json:"width"`
-	Height  string `json:"height"`
-	Url     string `json:"url"`
-	Index int `json:"index"`
+	Hash   string `json:"hash"`
+	Width  string `json:"width"`
+	Height string `json:"height"`
+	Url    string `json:"url"`
+	Index  int    `json:"index"`
 	Origin string `json:"origin"`
 }
 
@@ -130,7 +130,7 @@ func (tc *TcpClient) Start(callback Callback) {
 	}
 }
 
-func (tc *TcpClient)formatReceiveData(cmd CmdData) *CmdData{
+func (tc *TcpClient) formatReceiveData(cmd CmdData) *CmdData {
 	decodeString, err := base64.StdEncoding.DecodeString(cmd.Content)
 	if err != nil {
 		log.Println(err.Error())
@@ -142,31 +142,29 @@ func (tc *TcpClient)formatReceiveData(cmd CmdData) *CmdData{
 }
 
 func (tc *TcpClient) parseImages(cmd CmdData) CmdData {
-	var re = regexp.MustCompile(`(?m)\[pic,hash=([A-Z0-9]+),wide=(\d+),high=(\d+),cartoon=[a-z]+\]\[photo=(.*)\]`)
+	var re = regexp.MustCompile(`(?m)\[pic,hash=([A-Z0-9]+)(,wide=(\d+))?(,high=(\d+))?(,cartoon=[a-z]+)?\]\[photo=([^\[]+)\]`)
 	for i, match := range re.FindAllStringSubmatch(cmd.Content, -1) {
-		if len(match) != 5 {
-			continue
+		if len(match) == 8 {
+			cmd.Images = append(cmd.Images, Image{Origin: match[0], Hash: match[1], Width: match[3], Height: match[5], Url: match[7], Index: i})
+			cmd.Content = strings.Replace(cmd.Content, match[0], "", 1)
 		}
-		cmd.Images = append(cmd.Images,Image{Origin: match[0],Hash: match[1],Width: match[2],Height: match[3],Url: match[4],Index: i})
-		cmd.Content = strings.Replace(cmd.Content,match[0],"",1)
 	}
 	return cmd
 }
 
-func (tc *TcpClient) ConvertUnicodeEmoji(text string)string {
+func (tc *TcpClient) ConvertUnicodeEmoji(text string) string {
 	reg, err := regexp.Compile("(\\\\u[a-zA-z0-9]{4}){1,2}")
 	if err != nil {
 		return ""
 	}
 	for _, match := range reg.FindAllString(text, -1) {
-		sJsonBytes := []byte(fmt.Sprintf(`{"emoji":"%s"}`,match))
+		sJsonBytes := []byte(fmt.Sprintf(`{"emoji":"%s"}`, match))
 		var emojiTrans EmojiTrans
-		_ = json.Unmarshal(sJsonBytes,&emojiTrans)
-		text = strings.Replace(text,match,emojiTrans.Emoji,1)
+		_ = json.Unmarshal(sJsonBytes, &emojiTrans)
+		text = strings.Replace(text, match, emojiTrans.Emoji, 1)
 	}
 	return text
 }
-
 
 func (tc *TcpClient) convertToString(src string, srcCode string, tagCode string) string {
 	srcCoder := mahonia.NewDecoder(srcCode)
