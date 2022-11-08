@@ -36,6 +36,10 @@ const (
 	Jd Channel = "HWQSMJD"
 	// JdJJB 【神单】京东精简线报版
 	JdJJB Channel = "HWQSMJDJJB"
+
+	// HWQSMMMQBJ 神单HWQSMMMQBJ
+	HWQSMMMQBJ Channel = "HWQSMMMQBJ"
+
 	// ALL 所有订阅
 	ALL Channel = "HWQSMALL"
 )
